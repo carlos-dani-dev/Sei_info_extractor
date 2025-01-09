@@ -21,7 +21,7 @@ def login(usuario, senha, driver):
     password.send_keys(Keys.RETURN)
 
 
-def info_processo(driver, wait):
+def info_processo(driver, wait, predef_prompt):
     # print("Entrei no processo")
     
     str_documentos = []
@@ -68,7 +68,7 @@ def info_processo(driver, wait):
         else:
             pass
 
-        str_documentos.append(entendimento_documento(driver, wait, i))
+        str_documentos.append(entendimento_documento(driver, wait, i, predef_prompt))
         
         i+=1
 
@@ -81,10 +81,10 @@ def info_processo(driver, wait):
     driver.refresh()
     driver.switch_to.default_content()
 
-    dialogo_processo(str_documentos)    
+    return dialogo_processo(str_documentos)   
 
 
-def entendimento_documento(driver, wait, i):
+def entendimento_documento(driver, wait, i, predef_prompt):
     # print("Entrei no documento ", (i+1))
 
     driver.switch_to.default_content()
@@ -109,8 +109,12 @@ def dialogo_processo(str_documentos):
         print('Documento ', (i+1))
         print(str_documentos[i])
 
+    # Fazer prompt em conjunto com a concatenação de str_documentos
+    answer = '======== RESPOSTA ========'
+    return answer
 
-def varredura_pagina():
+
+def varredura_pagina(predef_prompt):
 
     selected_page = input("Digite a página em que deseja realizar a varredura: ")
 
@@ -132,16 +136,18 @@ def varredura_pagina():
         wait.until(EC.presence_of_element_located((By.ID, "divInfraAreaGlobal")))
 
         processos[i].click()
-        info_processo(driver=chrome_driver, wait=wait)
+        answer = info_processo(driver=chrome_driver, wait=wait, predef_prompt=predef_prompt)
+
+        print(answer) # para o processo da iteração
 
         chrome_driver.get(url_inicial)
         wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
 
 
 def dialogar_processo_especifico():
-    
+
     url_inicial = chrome_driver.current_url
- 
+
     wait.until(EC.presence_of_element_located((By.ID, "divInfraBarraSistemaD")))
     div_infra_barra = chrome_driver.find_element(By.ID, "divInfraBarraSistemaD")
     form_search = div_infra_barra.find_element(By.ID, "frmProtocoloPesquisaRapida")
@@ -151,6 +157,10 @@ def dialogar_processo_especifico():
 
     input_search.send_keys(process_number)
     input_search.send_keys(Keys.RETURN)
+
+    answer = info_processo(driver=chrome_driver, wait=wait)
+
+    print(answer)
 
 
 menu = "============\n= 1 = Realizar varredura de página com 1 único prompt\n= 2 = Dialogar com um processo em específico\n============\n= "
@@ -169,7 +179,8 @@ if __name__ == "__main__":
     login(usuario, senha, driver=chrome_driver)
 
     if menu_opt == "1":
-        varredura_pagina()
+        predef_prompt = input("Pergunta comum aos processos: ")
+        varredura_pagina(predef_prompt)
     elif menu_opt == "2":
         dialogar_processo_especifico()
 
