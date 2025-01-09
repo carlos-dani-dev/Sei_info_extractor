@@ -110,23 +110,16 @@ def dialogo_processo(str_documentos):
         print(str_documentos[i])
 
 
-if __name__ == "__main__":
+def varredura_pagina():
 
-    chrome_driver = webdriver.Chrome()
-    chrome_driver.get('https://sip.pi.gov.br/sip/login.php?sigla_orgao_sistema=GOV-PI&sigla_sistema=SEI&infra_url=L3NlaS8=')
-    wait = WebDriverWait(chrome_driver, 10)
-    
-    usuario = "carlos.daniel@sead.pi.gov.br"
-    senha = "7APjOcSosf"
-
-    login(usuario, senha, driver=chrome_driver)
+    selected_page = input("Digite a página em que deseja realizar a varredura: ")
 
     url_inicial = chrome_driver.current_url
 
     wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
     page = chrome_driver.find_element(By.ID, "selRecebidosPaginacaoSuperior")
     dropdown = Select(page)
-    dropdown.select_by_visible_text("13")
+    dropdown.select_by_visible_text(selected_page)
 
     processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
     print(f"Quantidade de processos encontrados: {len(processos)}")
@@ -143,3 +136,62 @@ if __name__ == "__main__":
 
         chrome_driver.get(url_inicial)
         wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
+
+
+def dialogar_processo_especifico():
+    
+    url_inicial = chrome_driver.current_url
+ 
+    wait.until(EC.presence_of_element_located((By.ID, "divInfraBarraSistemaD")))
+    div_infra_barra = chrome_driver.find_element(By.ID, "divInfraBarraSistemaD")
+    form_search = div_infra_barra.find_element(By.ID, "frmProtocoloPesquisaRapida")
+    input_search = form_search.find_element(By.ID, "txtPesquisaRapida")
+
+    process_number = input("Digite o número do processo que deseja inspecionar: ")
+
+    input_search.send_keys(process_number)
+    input_search.send_keys(Keys.RETURN)
+
+
+menu = "============\n= 1 = Realizar varredura de página com 1 único prompt\n= 2 = Dialogar com um processo em específico\n============\n= "
+
+if __name__ == "__main__":
+
+    chrome_driver = webdriver.Chrome()
+    chrome_driver.get('https://sip.pi.gov.br/sip/login.php?sigla_orgao_sistema=GOV-PI&sigla_sistema=SEI&infra_url=L3NlaS8=')
+    wait = WebDriverWait(chrome_driver, 10)
+    
+    usuario = "carlos.daniel@sead.pi.gov.br"
+    senha = "7APjOcSosf"
+
+    menu_opt = input(menu)
+
+    login(usuario, senha, driver=chrome_driver)
+
+    if menu_opt == "1":
+        varredura_pagina()
+    elif menu_opt == "2":
+        dialogar_processo_especifico()
+
+    # url_inicial = chrome_driver.current_url
+
+    # wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
+    # page = chrome_driver.find_element(By.ID, "selRecebidosPaginacaoSuperior")
+    # dropdown = Select(page)
+    # dropdown.select_by_visible_text("13")
+
+    # processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
+    # print(f"Quantidade de processos encontrados: {len(processos)}")
+
+    # for i in range(len(processos)):
+
+    #     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "processoVisualizado")))
+    #     processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
+    #     print(f"{i+1}º Processo: {processos[i].text}")
+    #     wait.until(EC.presence_of_element_located((By.ID, "divInfraAreaGlobal")))
+
+    #     processos[i].click()
+    #     info_processo(driver=chrome_driver, wait=wait)
+
+    #     chrome_driver.get(url_inicial)
+    #     wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
