@@ -3,8 +3,17 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+import os
+
+
+chrome_options = Options()
+chrome_options.add_argument(argument="--log-level=2")  # Suprime mensagens de INFO
+# chrome_service = Service(executable_path="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
+
 
 
 def login(usuario, senha, driver):
@@ -21,23 +30,23 @@ def login(usuario, senha, driver):
     password.send_keys(Keys.RETURN)
 
 
+def chatgpt_api_interaction(prompt, docs):
+    docs = "".join(docs)[3:-3]
+    prompt = '\n'+docs+prompt+'\n'
+    tamanho_prompt = len(prompt)
+    if tamanho_prompt > 6000:
+        prompt = prompt[tamanho_prompt-6000:-2]
+    else:
+        prompt = prompt[:-2]
+    print(prompt)
+    print(len(prompt))
+
+    return "= ========= Resposta do ChatGPT ========="
+
+
 def info_processo(driver, wait, predef_prompt):
-    # print("Entrei no processo")
-    
-    str_documentos = []
 
-    # wait.until(EC.presence_of_element_located((By.ID, "ifrArvore")))
-
-    # iframe_arvore = driver.find_element(By.ID, "ifrArvore")
-    # driver.switch_to.frame(iframe_arvore)
-
-    # div_container = driver.find_element(By.ID, 'container')
-    # div_arvore = div_container.find_element(By.ID, 'divArvore')
-    # div = div_arvore.find_element(By.CLASS_NAME, 'infraArvore')
-
-    # tags_com_target = div.find_elements(By.CSS_SELECTOR, "[target='ifrVisualizacao']")
-    # print(len(tags_com_target))
-    
+    str_documentos = []    
     i=0
     while True:
 
@@ -52,18 +61,14 @@ def info_processo(driver, wait, predef_prompt):
 
         tags_com_target = div.find_elements(By.CSS_SELECTOR, "[target='ifrVisualizacao']")
 
-        # print('Quantidade de documentos no processo: ', len(tags_com_target))
-
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[target='ifrVisualizacao']")))
         tags_com_target = div.find_elements(By.CSS_SELECTOR, "[target='ifrVisualizacao']")
 
-        # Rolagem para o elemento
         driver.execute_script("arguments[0].scrollIntoView(true);", tags_com_target[i])
 
         span_elements = tags_com_target[i].find_elements(By.TAG_NAME, "span")
         
         if span_elements:
-            # Simular clique com JavaScript (caso o clique direto falhe)
             driver.execute_script("arguments[0].click();", tags_com_target[i])
         else:
             pass
@@ -71,7 +76,6 @@ def info_processo(driver, wait, predef_prompt):
         str_documentos.append(entendimento_documento(driver, wait, i, predef_prompt))
         
         i+=1
-
         if i == len(tags_com_target):
             driver.switch_to.default_content()
             break
@@ -81,12 +85,14 @@ def info_processo(driver, wait, predef_prompt):
     driver.refresh()
     driver.switch_to.default_content()
 
-    return dialogo_processo(str_documentos)   
+    prompt = f"{str_documentos}\n{predef_prompt}"
+    answer = chatgpt_api_interaction(prompt, str_documentos)
+    
+    return answer
 
 
 def entendimento_documento(driver, wait, i, predef_prompt):
-    # print("Entrei no documento ", (i+1))
-
+    
     driver.switch_to.default_content()
     iframe_visualizacao = driver.find_element(By.ID, "ifrVisualizacao")
 
@@ -104,19 +110,9 @@ def entendimento_documento(driver, wait, i, predef_prompt):
     return concatenated_text
 
 
-def dialogo_processo(str_documentos):
-    for i in range(len(str_documentos)):
-        print('Documento ', (i+1))
-        print(str_documentos[i])
-
-    # Fazer prompt em conjunto com a concatenação de str_documentos
-    answer = '======== RESPOSTA ========'
-    return answer
-
-
 def varredura_pagina(predef_prompt):
 
-    selected_page = input("Digite a página em que deseja realizar a varredura: ")
+    selected_page = input("= Página: ")
 
     url_inicial = chrome_driver.current_url
 
@@ -126,19 +122,20 @@ def varredura_pagina(predef_prompt):
     dropdown.select_by_visible_text(selected_page)
 
     processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
-    print(f"Quantidade de processos encontrados: {len(processos)}")
+    print(f"= Quantidade de processos encontrados na página {selected_page}: {len(processos)}")
 
     for i in range(len(processos)):
 
         wait.until(EC.presence_of_element_located((By.CLASS_NAME, "processoVisualizado")))
         processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
-        print(f"{i+1}º Processo: {processos[i].text}")
+        processo = processos[i].text
+        print(f"= {i+1}º Processo: {processo}")
         wait.until(EC.presence_of_element_located((By.ID, "divInfraAreaGlobal")))
 
         processos[i].click()
         answer = info_processo(driver=chrome_driver, wait=wait, predef_prompt=predef_prompt)
 
-        print(answer) # para o processo da iteração
+        print(f"{processo}: {answer}")
 
         chrome_driver.get(url_inicial)
         wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
@@ -146,28 +143,28 @@ def varredura_pagina(predef_prompt):
 
 def dialogar_processo_especifico():
 
-    url_inicial = chrome_driver.current_url
-
     wait.until(EC.presence_of_element_located((By.ID, "divInfraBarraSistemaD")))
     div_infra_barra = chrome_driver.find_element(By.ID, "divInfraBarraSistemaD")
     form_search = div_infra_barra.find_element(By.ID, "frmProtocoloPesquisaRapida")
     input_search = form_search.find_element(By.ID, "txtPesquisaRapida")
 
-    process_number = input("Digite o número do processo que deseja inspecionar: ")
+    process_number = input("= Digite o número do processo que deseja inspecionar: ")
 
     input_search.send_keys(process_number)
     input_search.send_keys(Keys.RETURN)
 
-    answer = info_processo(driver=chrome_driver, wait=wait)
+    prompt = input(f"= Pergunte ao processo {process_number}: ")
 
-    print(answer)
+    answer = info_processo(driver=chrome_driver, wait=wait, predef_prompt=prompt)
+
+    print(f"{process_number}: {answer}")
 
 
 menu = "============\n= 1 = Realizar varredura de página com 1 único prompt\n= 2 = Dialogar com um processo em específico\n============\n= "
 
 if __name__ == "__main__":
 
-    chrome_driver = webdriver.Chrome()
+    chrome_driver = webdriver.Chrome(options=chrome_options)
     chrome_driver.get('https://sip.pi.gov.br/sip/login.php?sigla_orgao_sistema=GOV-PI&sigla_sistema=SEI&infra_url=L3NlaS8=')
     wait = WebDriverWait(chrome_driver, 10)
     
@@ -179,30 +176,7 @@ if __name__ == "__main__":
     login(usuario, senha, driver=chrome_driver)
 
     if menu_opt == "1":
-        predef_prompt = input("Pergunta comum aos processos: ")
+        predef_prompt = input("= Pergunta comum aos processos: ")
         varredura_pagina(predef_prompt)
     elif menu_opt == "2":
         dialogar_processo_especifico()
-
-    # url_inicial = chrome_driver.current_url
-
-    # wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
-    # page = chrome_driver.find_element(By.ID, "selRecebidosPaginacaoSuperior")
-    # dropdown = Select(page)
-    # dropdown.select_by_visible_text("13")
-
-    # processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
-    # print(f"Quantidade de processos encontrados: {len(processos)}")
-
-    # for i in range(len(processos)):
-
-    #     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "processoVisualizado")))
-    #     processos = chrome_driver.find_elements(By.CLASS_NAME, "processoVisualizado")
-    #     print(f"{i+1}º Processo: {processos[i].text}")
-    #     wait.until(EC.presence_of_element_located((By.ID, "divInfraAreaGlobal")))
-
-    #     processos[i].click()
-    #     info_processo(driver=chrome_driver, wait=wait)
-
-    #     chrome_driver.get(url_inicial)
-    #     wait.until(EC.presence_of_element_located((By.ID, "tblProcessosRecebidos")))
