@@ -30,16 +30,15 @@ def login(usuario, senha, driver):
     password.send_keys(Keys.RETURN)
 
 
-def chatgpt_api_interaction(prompt, docs):
+def chatgpt_api_interaction(predef_prompt, docs):
     docs = "".join(docs)[3:-3]
-    prompt = '\n'+docs+prompt+'\n'
+    prompt = f"\n{docs}\n{predef_prompt}\n"
     tamanho_prompt = len(prompt)
-    if tamanho_prompt > 6000:
-        prompt = prompt[tamanho_prompt-6000:-2]
+    if tamanho_prompt > 3000:
+        prompt = prompt[tamanho_prompt-3000:-1]
     else:
-        prompt = prompt[:-2]
-    print(prompt)
-    print(len(prompt))
+        prompt = prompt[:-1]
+    print('= prompt para o ChatGPT: ',prompt)
 
     return "= ========= Resposta do ChatGPT ========="
 
@@ -47,9 +46,22 @@ def chatgpt_api_interaction(prompt, docs):
 def info_processo(driver, wait, predef_prompt):
 
     str_documentos = []    
-    i=0
-    while True:
+    i=0    
 
+    wait.until(EC.presence_of_element_located((By.ID, "ifrArvore")))
+
+    iframe_arvore = driver.find_element(By.ID, "ifrArvore")
+    driver.switch_to.frame(iframe_arvore)
+
+    div_container = driver.find_element(By.ID, 'container')
+    div_arvore = div_container.find_element(By.ID, 'divArvore')
+    div = div_arvore.find_element(By.CLASS_NAME, 'infraArvore')
+    
+    verifica_presenca_pasta(driver, div, wait)
+
+    driver.switch_to.default_content()
+
+    while True:
         wait.until(EC.presence_of_element_located((By.ID, "ifrArvore")))
 
         iframe_arvore = driver.find_element(By.ID, "ifrArvore")
@@ -58,9 +70,7 @@ def info_processo(driver, wait, predef_prompt):
         div_container = driver.find_element(By.ID, 'container')
         div_arvore = div_container.find_element(By.ID, 'divArvore')
         div = div_arvore.find_element(By.CLASS_NAME, 'infraArvore')
-
-        tags_com_target = div.find_elements(By.CSS_SELECTOR, "[target='ifrVisualizacao']")
-
+    
         wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "[target='ifrVisualizacao']")))
         tags_com_target = div.find_elements(By.CSS_SELECTOR, "[target='ifrVisualizacao']")
 
@@ -85,10 +95,26 @@ def info_processo(driver, wait, predef_prompt):
     driver.refresh()
     driver.switch_to.default_content()
 
-    prompt = f"{str_documentos}\n{predef_prompt}"
-    answer = chatgpt_api_interaction(prompt, str_documentos)
+    answer = chatgpt_api_interaction(predef_prompt, str_documentos)
     
     return answer
+
+def verifica_presenca_pasta(driver, div, wait):
+    i=1
+    while True:
+        id = 'ancjoinPASTA'+str(i)
+        
+        try:
+            ancjoin = div.find_element(By.ID, id)
+        except:
+            break
+        else:
+            img = ancjoin.find_element(By.TAG_NAME, "img")
+            if "plus.gif" in img.get_attribute("src"):
+                driver.execute_script("arguments[0].click();", ancjoin)
+                time.sleep(2)
+        i+=1 
+
 
 
 def entendimento_documento(driver, wait, i, predef_prompt):
@@ -159,10 +185,29 @@ def dialogar_processo_especifico():
 
     print(f"{process_number}: {answer}")
 
+def varrer_lista_processos(process_list):
 
-menu = "============\n= 1 = Realizar varredura de página com 1 único prompt\n= 2 = Dialogar com um processo em específico\n============\n= "
+    wait.until(EC.presence_of_element_located((By.ID, "divInfraBarraSistemaD")))
+    div_infra_barra = chrome_driver.find_element(By.ID, "divInfraBarraSistemaD")
+    form_search = div_infra_barra.find_element(By.ID, "frmProtocoloPesquisaRapida")
+    input_search = form_search.find_element(By.ID, "txtPesquisaRapida")
+
+    prompt = input("= Pergunte aos processos: ")
+
+    for process_number in process_list:
+        input_search.send_keys(process_number)
+        input_search.send_keys(Keys.RETURN)
+
+        answer = info_processo(driver=chrome_driver, wait=wait, predef_prompt=prompt)
+
+        print(f"{process_number}: {answer}")
+
+
+menu = "============\n= 1 = Realizar varredura de página com 1 único prompt\n= 2 = Dialogar com um processo em específico\n= 3 = Varrer lista de processos\n============\n= "
 
 if __name__ == "__main__":
+
+    process_list = []
 
     chrome_driver = webdriver.Chrome(options=chrome_options)
     chrome_driver.get('https://sip.pi.gov.br/sip/login.php?sigla_orgao_sistema=GOV-PI&sigla_sistema=SEI&infra_url=L3NlaS8=')
@@ -180,3 +225,6 @@ if __name__ == "__main__":
         varredura_pagina(predef_prompt)
     elif menu_opt == "2":
         dialogar_processo_especifico()
+    elif menu_opt == "3":
+        print("A lista de processos já foi predefinida")
+        varrer_lista_processos(process_list)
