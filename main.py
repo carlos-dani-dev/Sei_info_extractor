@@ -1,3 +1,4 @@
+import re
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -11,6 +12,15 @@ import os
 
 
 chrome_options = Options()
+chrome_options.add_experimental_option("prefs", {
+    "profile.default_content_setting_values.automatic_downloads": 2,
+    "download.default_directory": "/dev/null",  # Diretório inválido para impedir downloads
+    "download.prompt_for_download": False,  # Bloqueia pop-ups de download
+    "download.directory_upgrade": False,
+    "download.extensions_to_open": "applications/docx",  # Apenas PDF pode abrir, docx fica bloqueado
+    "plugins.always_open_pdf_externally": False,  # Impede que PDFs sejam baixados automaticamente
+    "safebrowsing.enabled": False,  # Evita avisos de segurança sobre downloads
+})
 chrome_options.add_argument(argument="--log-level=2")  # Suprime mensagens de INFO
 # chrome_service = Service(executable_path="C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe")
 
@@ -30,9 +40,40 @@ def login(usuario, senha, driver):
     password.send_keys(Keys.RETURN)
 
 
-def chatgpt_api_interaction(predef_prompt, docs):
-    docs = "".join(docs)[3:-3]
-    prompt = f"\n{docs}\n{predef_prompt}\n"
+def preprocess_doc(texto):
+
+    # Remover quebras de linha desnecessárias
+    texto = re.sub(r'\s+', ' ', texto).strip()
+    
+    # Extrair as informações essenciais
+    padrao = re.compile(
+    r"(PROCESSO Nº:.*?Documento assinado eletronicamente)",
+    re.DOTALL
+    )
+    
+    match = padrao.search(texto)
+    
+    if match:
+        texto_limpo = match.group(0)
+        # print('texto: '+texto+'\n'+'texto limpo: '+texto_limpo)
+        return texto_limpo
+
+    return ""
+
+
+def chatgpt_api_interaction(predef_prompt, str_documentos):
+    
+    # textos = []
+
+    # for doc in docs:
+    #     textos.append(preprocess_doc(doc))
+
+    string_textos = ""
+
+    for texto in str_documentos:
+        string_textos += texto + "\n"
+
+    prompt = f"\n{string_textos}\n{predef_prompt}\n"
     tamanho_prompt = len(prompt)
     if tamanho_prompt > 3000:
         prompt = prompt[tamanho_prompt-3000:-1]
@@ -83,7 +124,7 @@ def info_processo(driver, wait, predef_prompt):
         else:
             pass
 
-        str_documentos.append(entendimento_documento(driver, wait, i, predef_prompt))
+        str_documentos.append(preprocess_doc(entendimento_documento(driver, wait, i, predef_prompt)))
         
         i+=1
         if i == len(tags_com_target):
@@ -114,7 +155,6 @@ def verifica_presenca_pasta(driver, div, wait):
                 driver.execute_script("arguments[0].click();", ancjoin)
                 time.sleep(2)
         i+=1 
-
 
 
 def entendimento_documento(driver, wait, i, predef_prompt):
