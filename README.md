@@ -1,9 +1,9 @@
 # Sei-information-extractor-with-Gemini's-API
 
 ## Description
-Portuguese: O extrator de informações do SEI conecta processos SEI à API da OpenAI para facilitar a interação e o entendimento de processos do SEI, bem como automatizar processos de extração de informações complexas de cada processo.
+Portuguese: O extrator de informações do SEI conecta processos SEI à API do Gemini para facilitar a interação e o entendimento de processos do SEI, bem como automatizar processos de extração de informações complexas de cada processo.
 
-English: The SEI Information Extractor connects SEI processes to the OpenAI API to facilitate interaction and understanding of SEI processes, as well as automate complex information extraction processes from each process.
+English: The SEI Information Extractor connects SEI processes to the Gemini API to facilitate interaction and understanding of SEI processes, as well as automate complex information extraction processes from each process.
 
 ## Features
 Portuguese:
